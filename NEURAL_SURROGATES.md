@@ -4,6 +4,22 @@ This branch adds neural surrogates to the formation recommendation system. The M
 simulation code, the featurizer and `run_recommendation.py` are unchanged. The XGBoost models in
 `surrogate/models` remain the default, so the repository behaves as before until you change one line.
 
+## Delivered models
+
+The two delivered models are AMS-CeNN models, one per task:
+
+| Task | Folder | Model |
+|---|---|---|
+| Formation surrogate, called by the MCO | `surrogate/models_ams_cenn_tuned` | AMS-CeNN, tuned, certified contraction |
+| Ageing forecaster, used after cycling has started | `ageing_forecast/models_ams_cenn_forecast_tuned` | AMS-CeNN, tuned, certified contraction |
+
+Why AMS-CeNN: it is the model named in the project proposal, its cellular layers have a certified
+contraction property, and the cellular architecture is intended for hardware implementation. On the
+formation task it reaches the accuracy of the GRU with about one sixth of the parameters.
+
+The GRU models and the original XGBoost models are included as reference models, so that the
+comparison can be repeated. Where a GRU is better, the tables below say so.
+
 ## Use a neural surrogate in the MCO
 
 In `inputs/surrogate.toml`, point `models_dir` at another model folder:
@@ -110,7 +126,8 @@ plating growth are the differences between cycle 500 and cycle 1 that the MCO sc
 - The MCO ranking changes with the surrogate. The scores from the two neural surrogates agree with each
   other (rank correlation 0.82) and disagree with the XGBoost scores (-0.49 and -0.40). The top four
   candidates are different for each surrogate.
-- For use in the MCO, the GRU orders candidates best. AMS-CeNN is the option with certified contraction.
+- The GRU orders the candidates best, mainly by plating growth. AMS-CeNN has the same error and is the
+  delivered model; the GRU is available as a cross-check of a recommendation.
 
 The reference ageing simulations come from a separate run. On the 18 shared candidates they agree with
 `dataset.csv` within 0.002 Ah.
@@ -187,8 +204,9 @@ The error is in percent of each candidate's indicator range. No rollout diverged
 | not shipped | Linear | no | 0.81 | 6.54 | 65,792 |
 | `models_ams_cenn` | AMS-CeNN, paper configuration | yes | 1.06 | 2.76 | 89,797 |
 
-The tuned GRU is the most accurate forecaster. The three shipped models are close on the worst
-candidate. The two tuned models come from a random search on the same 72 candidates (not nested), so
+The delivered forecaster is the tuned AMS-CeNN (`run_ageing_forecast.py` uses it by default). The tuned
+GRU is more accurate on the median and is smaller on this task; it is included as a reference. The three
+shipped models are close on the worst candidate. The two tuned models come from a random search on the same 72 candidates (not nested), so
 their rows are somewhat optimistic. The full table is in `ageing_forecast/cv/summary.csv`.
 
 ## Retrain or extend

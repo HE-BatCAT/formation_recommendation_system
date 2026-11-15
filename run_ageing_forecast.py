@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parent
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--models", default=None, help="model folder; default: the selected model")
+    parser.add_argument("--models", default=None, help="model folder; default: the delivered AMS-CeNN forecaster")
     parser.add_argument("--candidate", default="x1=0.5_x2=0.5_x3=0.1_x4=1")
     parser.add_argument("--measured", type=int, default=64)
     args = parser.parse_args()
@@ -28,7 +28,7 @@ def main():
     folder = args.models
     if folder is None:
         selection = json.loads((ROOT / "ageing_forecast" / "cv" / "selection.json").read_text())
-        folder = ROOT / "ageing_forecast" / f"models_{selection['best_overall'].replace('-', '_')}"
+        folder = ROOT / "ageing_forecast" / f"models_{selection['best_certified'].replace('-', '_')}"
     forecaster = AgeingForecaster(folder)
     truth = pd.read_csv(ROOT / "ageing_forecast" / "data" / f"{args.candidate}.csv").sort_values("cycle")
     forecast = forecaster.forecast(truth.iloc[:args.measured])
