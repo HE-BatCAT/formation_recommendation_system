@@ -1,0 +1,74 @@
+{
+  "backend": "torch",
+  "architecture": {
+    "kind": "cenn",
+    "variant": "C1C2-Skip-K2",
+    "overrides": {}
+  },
+  "arm": "ams-cenn",
+  "description": "AMS-CeNN headline: bounded gate, multi-scale, linear skip, K=2",
+  "certified_contraction": true,
+  "indicators": [
+    "capacity",
+    "plating",
+    "sei",
+    "resistance"
+  ],
+  "aging_cycles": 500,
+  "lookback": 64,
+  "block": 64,
+  "model_files": {
+    "seed0": "member_seed0.pt",
+    "seed1": "member_seed1.pt",
+    "seed2": "member_seed2.pt"
+  },
+  "normalization": {
+    "mu": [
+      3.349756045969032,
+      0.3864213090754862,
+      0.029365266412087313,
+      0.11162715224057411
+    ],
+    "sd": [
+      0.19579506388514709,
+      0.17602731580149766,
+      0.008778620480529232,
+      0.0044442437755368045
+    ]
+  },
+  "ensemble": "mean of the members; one member per seed",
+  "final_fit_rule": "trained on all 72 candidates for a fixed 80 epochs, the budget used in cross-validation",
+  "training": {
+    "epochs": 80,
+    "batch_size": 256,
+    "learning_rate": 0.001
+  },
+  "parameters": 89797,
+  "cross_validation": {
+    "arm": "ams-cenn",
+    "certified": true,
+    "seeds": 3,
+    "nrmse_median": 1.0602010611,
+    "nrmse_worst_candidate": 2.7642369913,
+    "nrmse_capacity": 1.0552925429,
+    "nrmse_plating": 0.9990434002,
+    "nrmse_sei": 1.0293131495,
+    "nrmse_resistance": 1.0977406707,
+    "rank_final_capacity": 0.9675434647,
+    "diverged": 0,
+    "parameters": 89797,
+    "seconds_per_fit": 422.7692681292,
+    "description": "AMS-CeNN headline: bounded gate, multi-scale, linear skip, K=2"
+  },
+  "torch_version": "2.11.0+cu128",
+  "reference_check": {
+    "candidate": "x1=0.01_x2=0.01_x3=0.1_x4=1",
+    "measured_cycles": 64,
+    "expected_final": [
+      3.018724037119974,
+      0.6855555733798022,
+      0.04248130886497234,
+      0.11793548658455225
+    ]
+  }
+}

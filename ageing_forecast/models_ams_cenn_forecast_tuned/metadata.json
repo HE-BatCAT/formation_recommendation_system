@@ -1,0 +1,86 @@
+{
+  "backend": "torch",
+  "architecture": {
+    "kind": "cenn",
+    "variant": "C1-BoundedTau",
+    "overrides": {
+      "linear_skip": true,
+      "multiscale_mode": "parallel_ensemble",
+      "head_type": "mlp",
+      "hidden_dim": 32,
+      "num_layers": 6,
+      "K": 2,
+      "neighborhood": 5,
+      "dropout": 0.0,
+      "spectral_rho": 0.9,
+      "alpha_min": 0.0
+    }
+  },
+  "arm": "ams-cenn-forecast-tuned",
+  "description": "ageing forecaster, random search, best of 20 trials by validation error (trial 15); certified contraction: True",
+  "certified_contraction": true,
+  "indicators": [
+    "capacity",
+    "plating",
+    "sei",
+    "resistance"
+  ],
+  "aging_cycles": 500,
+  "lookback": 64,
+  "block": 64,
+  "model_files": {
+    "seed0": "member_seed0.pt",
+    "seed1": "member_seed1.pt",
+    "seed2": "member_seed2.pt"
+  },
+  "normalization": {
+    "mu": [
+      3.349756045969032,
+      0.3864213090754862,
+      0.029365266412087313,
+      0.11162715224057411
+    ],
+    "sd": [
+      0.19579506388514709,
+      0.17602731580149766,
+      0.008778620480529232,
+      0.0044442437755368045
+    ]
+  },
+  "ensemble": "mean of the members; one member per seed",
+  "final_fit_rule": "trained on all 72 candidates for a fixed 80 epochs, the budget used in cross-validation",
+  "training": {
+    "epochs": 80,
+    "batch_size": 256,
+    "learning_rate": 0.000748046650258471,
+    "weight_decay": 1e-05
+  },
+  "parameters": 79333,
+  "cross_validation": {
+    "arm": "ams-cenn-forecast-tuned",
+    "certified": true,
+    "seeds": 3,
+    "nrmse_median": 0.4372642547,
+    "nrmse_worst_candidate": 3.7785449907,
+    "nrmse_capacity": 0.4517528672,
+    "nrmse_plating": 0.5252317193,
+    "nrmse_sei": 0.4528120841,
+    "nrmse_resistance": 0.3162127084,
+    "rank_final_capacity": 0.9521834202,
+    "diverged": 0,
+    "parameters": 79333,
+    "seconds_per_fit": 161.3505609625,
+    "description": "ageing forecaster, random search, best of 20 trials by validation error (trial 15); certified contraction: True"
+  },
+  "torch_version": "2.11.0+cu128",
+  "reference_check": {
+    "candidate": "x1=0.01_x2=0.01_x3=0.1_x4=1",
+    "measured_cycles": 64,
+    "expected_final": [
+      3.028124389907296,
+      0.6792453843452668,
+      0.04224108009244794,
+      0.11768235046519235
+    ]
+  }
+}

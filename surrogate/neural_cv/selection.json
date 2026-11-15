@@ -1,0 +1,7 @@
+{
+  "criterion": "lowest mean nRMSE over targets under protocol-grouped cross-validation, averaged over seeds",
+  "best_overall": "ams-cenn-tuned",
+  "best_cellular": "ams-cenn-tuned",
+  "best_certified": "ams-cenn-tuned",
+  "best_reference": "gru"
+}

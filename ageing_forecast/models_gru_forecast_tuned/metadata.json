@@ -1,0 +1,79 @@
+{
+  "backend": "torch",
+  "architecture": {
+    "kind": "gru",
+    "variant": null,
+    "overrides": {
+      "hidden": 64,
+      "layers": 1,
+      "dropout": 0.3
+    }
+  },
+  "arm": "gru-forecast-tuned",
+  "description": "ageing forecaster, random search, best of 12 trials by validation error (trial 0); certified contraction: False",
+  "certified_contraction": false,
+  "indicators": [
+    "capacity",
+    "plating",
+    "sei",
+    "resistance"
+  ],
+  "aging_cycles": 500,
+  "lookback": 64,
+  "block": 64,
+  "model_files": {
+    "seed0": "member_seed0.pt",
+    "seed1": "member_seed1.pt",
+    "seed2": "member_seed2.pt"
+  },
+  "normalization": {
+    "mu": [
+      3.349756045969032,
+      0.3864213090754862,
+      0.029365266412087313,
+      0.11162715224057411
+    ],
+    "sd": [
+      0.19579506388514709,
+      0.17602731580149766,
+      0.008778620480529232,
+      0.0044442437755368045
+    ]
+  },
+  "ensemble": "mean of the members; one member per seed",
+  "final_fit_rule": "trained on all 72 candidates for a fixed 80 epochs, the budget used in cross-validation",
+  "training": {
+    "epochs": 80,
+    "batch_size": 128,
+    "learning_rate": 0.002070631350729757,
+    "weight_decay": 0.0
+  },
+  "parameters": 30080,
+  "cross_validation": {
+    "arm": "gru-forecast-tuned",
+    "certified": false,
+    "seeds": 3,
+    "nrmse_median": 0.1134301957,
+    "nrmse_worst_candidate": 3.121543978,
+    "nrmse_capacity": 0.10807607,
+    "nrmse_plating": 0.1334106422,
+    "nrmse_sei": 0.1191204782,
+    "nrmse_resistance": 0.0844075172,
+    "rank_final_capacity": 0.9956803224,
+    "diverged": 0,
+    "parameters": 30080,
+    "seconds_per_fit": 194.352243975,
+    "description": "ageing forecaster, random search, best of 12 trials by validation error (trial 0); certified contraction: False"
+  },
+  "torch_version": "2.11.0+cu128",
+  "reference_check": {
+    "candidate": "x1=0.01_x2=0.01_x3=0.1_x4=1",
+    "measured_cycles": 64,
+    "expected_final": [
+      3.0292325778019027,
+      0.6799207363383217,
+      0.04213967909599163,
+      0.11767850203327307
+    ]
+  }
+}

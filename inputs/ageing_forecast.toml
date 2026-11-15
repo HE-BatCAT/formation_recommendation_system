@@ -1,0 +1,30 @@
+# Ageing-trajectory forecaster: reads the first measured ageing cycles of a cell and forecasts the
+# remaining cycles. It is a separate model from the formation surrogate in surrogate.toml and is not
+# called by the MCO; it is used after cycling has started, to check the surrogate's prediction.
+
+[paths]
+data_dir = "ageing_forecast/data"
+cv_dir = "ageing_forecast/cv"
+models_dir = "ageing_forecast/models"
+
+[data]
+indicators = ["capacity", "plating", "sei", "resistance"]
+aging_cycles = 500
+
+[model]
+lookback = 64
+block = 64
+
+[training]
+arms = ["ams-cenn", "ams-cenn-relaxed", "ams-cenn-noskip", "ams-cenn-lvn", "gru", "mlp", "linear"]
+seeds = [0, 1, 2]
+folds = 8
+epochs = 80
+batch_size = 256
+learning_rate = 1e-3
+
+# Random hyperparameter search (python -m ageing_forecast.train tune). A trial is selected on
+# validation candidates; the winner is then cross-validated like every other arm.
+[training.tuning]
+seed = 0
+folds = 3
