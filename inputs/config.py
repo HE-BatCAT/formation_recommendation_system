@@ -20,10 +20,15 @@ class ProjectConfig:
             else Path(__file__).resolve().parents[1]
         )
         inputs_dir = self.project_root / "inputs"
+        self.models_config_dir = inputs_dir / "models"
         self.simulation = TomlConfig(inputs_dir / "simulation.toml")
         self.mco = TomlConfig(inputs_dir / "mco.toml")
         self.surrogate = TomlConfig(inputs_dir / "surrogate.toml")
         self.parameters_path = inputs_dir / "parameters.toml"
+
+    def model_config(self, name):
+        """Hyper-parameters from ``inputs/models/<name>.toml``."""
+        return TomlConfig(self.models_config_dir / f"{name}.toml").data
 
     def resolve_path(self, value):
         path = Path(value)
