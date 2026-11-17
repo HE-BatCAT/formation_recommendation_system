@@ -1,7 +1,7 @@
 # XGBoost surrogate (surrogate/estimators/xgboost_estimator.py).
 # Every key is passed to xgboost.XGBRegressor; one regressor per target.
-n_estimators = 50
-learning_rate = 0.03
+n_estimators = 500
+learning_rate = 0.01
 max_depth = 6
 min_child_weight = 2
 subsample = 0.8
