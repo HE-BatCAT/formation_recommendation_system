@@ -32,6 +32,13 @@ htmlcov/
 .DS_Store
 tempCodeRunnerFile.py
 
+# Saved models (trained locally; never pushed)
+*.joblib
+*.pt
+*.pth
+*.pkl
+*.ckpt
+
 # Project-specific
 analysis/*
 scripts/*/pre_trained/
