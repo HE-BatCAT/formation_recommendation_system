@@ -1,0 +1,76 @@
+{
+  "gru-forecast-tuned": {
+    "kind": "gru",
+    "variant": null,
+    "overrides": {
+      "hidden": 64,
+      "layers": 1,
+      "dropout": 0.3
+    },
+    "training": {
+      "learning_rate": 0.002070631350729757,
+      "batch_size": 128,
+      "weight_decay": 0.0
+    },
+    "description": "ageing forecaster, random search, best of 12 trials by validation error (trial 0); certified contraction: False"
+  },
+  "ams-cenn-forecast-tuned": {
+    "kind": "cenn",
+    "variant": "C1-BoundedTau",
+    "overrides": {
+      "linear_skip": true,
+      "multiscale_mode": "parallel_ensemble",
+      "head_type": "mlp",
+      "hidden_dim": 32,
+      "num_layers": 6,
+      "K": 2,
+      "neighborhood": 5,
+      "dropout": 0.0,
+      "spectral_rho": 0.9,
+      "alpha_min": 0.0
+    },
+    "training": {
+      "learning_rate": 0.000748046650258471,
+      "batch_size": 256,
+      "weight_decay": 1e-05
+    },
+    "description": "ageing forecaster, random search, best of 20 trials by validation error (trial 15); certified contraction: True"
+  },
+  "gru-tuned": {
+    "kind": "gru",
+    "variant": null,
+    "overrides": {
+      "hidden": 64,
+      "layers": 2,
+      "dropout": 0.2
+    },
+    "training": {
+      "learning_rate": 0.001141533010589573,
+      "batch_size": 64,
+      "weight_decay": 1e-05
+    },
+    "description": "random search, best of 20 trials by validation error (trial 19); certified contraction: False"
+  },
+  "ams-cenn-tuned": {
+    "kind": "cenn",
+    "variant": "C1-BoundedTau",
+    "overrides": {
+      "linear_skip": false,
+      "multiscale_mode": "parallel_ensemble",
+      "head_type": "mlp",
+      "hidden_dim": 128,
+      "num_layers": 6,
+      "K": 2,
+      "neighborhood": 3,
+      "dropout": 0.0,
+      "spectral_rho": 0.99,
+      "alpha_min": 0.0
+    },
+    "training": {
+      "learning_rate": 0.002830317886862484,
+      "batch_size": 32,
+      "weight_decay": 1e-05
+    },
+    "description": "random search, best of 30 trials by validation error (trial 17); certified contraction: True"
+  }
+}

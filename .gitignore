@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+logs/
+formation_system.log
+*.tmp*
+# per-fit cross-validation and search records (large; the tables next to them are kept)
+surrogate/neural_cv/**/seed*_fold*.json
+surrogate/neural_cv/tuning/**/trial*.json
+ageing_forecast/cv/**/seed*_fold*.json
+ageing_forecast/cv/tuning/**/trial*.json
+surrogate/_smoke*/

@@ -1,0 +1,6 @@
+{
+  "criterion": "no diverged rollouts, then lowest median nRMSE over held-out candidates for cycles 65 to 500, averaged over seeds",
+  "best_overall": "gru-forecast-tuned",
+  "best_cellular": "ams-cenn-forecast-tuned",
+  "best_certified": "ams-cenn-forecast-tuned"
+}

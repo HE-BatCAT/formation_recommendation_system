@@ -44,3 +44,31 @@ validation_random_state = 43
 
 [plots]
 max_test_protocols = 2
+
+# Neural surrogates (python -m surrogate.train_neural). To use one in the recommendation, set
+# paths.models_dir above to its folder, for example "surrogate/models_gru".
+[neural]
+cv_dir = "surrogate/neural_cv"
+arms = [
+    "ams-cenn", "ams-cenn-k8", "ams-cenn-noskip", "ams-cenn-mlphead",
+    "cenn-single-scale", "cenn-patch-mlphead",
+    "ams-cenn-relaxed", "ams-cenn-noskip-relaxed",
+    "cenn-single-scale-relaxed", "cenn-single-scale-capoff",
+    "gru", "mlp", "linear", "xgboost",
+]
+seeds = [0, 1, 2]
+folds = 5
+epochs = 800
+patience = 120
+batch_size = 64
+learning_rate = 1e-3
+final_validation_protocols = 10
+final_split_random_state = 42
+
+# Random hyperparameter search (python -m surrogate.train_neural tune). A trial is selected by its
+# validation error on these folds; the winner is then cross-validated like every other arm.
+[neural.tuning]
+seed = 0
+folds = 3
+epochs = 600
+patience = 80

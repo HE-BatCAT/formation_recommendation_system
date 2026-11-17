@@ -534,3 +534,9 @@ Regenerate `surrogate/dataset.csv` after changing:
 
 Changing only XGBoost hyperparameters, split fractions, plotting options,
 or MCO weights does not require dataset regeneration.
+
+## Neural Surrogates (AMS-CeNN and GRU)
+
+This branch also ships neural ageing surrogates that plug into the same `SurrogatePredictor`
+interface. To use one, change `models_dir` in `inputs/surrogate.toml`. See
+[NEURAL_SURROGATES.md](NEURAL_SURROGATES.md) for the models, their cross-validated accuracy, and usage.
