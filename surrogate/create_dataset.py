@@ -1,18 +1,18 @@
 import argparse
-
-from inputs.config import ProjectConfig
-from simulations import BatterySimulator, ExperimentFactory, ParameterLoader, SolutionAnalyzer
-from surrogate.dataset import SurrogateDatasetBuilder
-from surrogate.features import TrajectoryFeaturizer
 import logging
 
-logging.basicConfig(
-    filename="formation_system.log",
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    filemode="a",
+from inputs import ProjectConfig, setup_logging
+from simulations import (
+    BatterySimulator,
+    ExperimentFactory,
+    FormationPipeline,
+    ParameterLoader,
+    SolutionAnalyzer,
 )
+from surrogate.dataset import SurrogateDatasetBuilder
+from surrogate.features import TrajectoryFeaturizer
 
+setup_logging()
 logger = logging.getLogger(__name__)
 
 class DatasetCommand:
@@ -20,15 +20,16 @@ class DatasetCommand:
         arguments = self._arguments()
         config = ProjectConfig()
         parameters = ParameterLoader(config.parameters_path).load()
-        experiments = ExperimentFactory(config.simulation)
-        simulator = BatterySimulator(config.simulation, parameters)
+        pipeline = FormationPipeline(
+            ExperimentFactory(config.simulation),
+            BatterySimulator(config.simulation, parameters),
+        )
         analyzer = SolutionAnalyzer(config.simulation)
         featurizer = TrajectoryFeaturizer(config.surrogate)
         builder = SurrogateDatasetBuilder(
             config.surrogate,
             config,
-            experiments,
-            simulator,
+            pipeline,
             analyzer,
             featurizer,
         )
