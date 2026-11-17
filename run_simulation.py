@@ -1,21 +1,16 @@
-from inputs import ProjectConfig
+import logging
+
+from inputs import ProjectConfig, setup_logging
 from simulations import (
     BatterySimulator,
     ExperimentFactory,
+    FormationPipeline,
     ParameterLoader,
     ResultPlotter,
     SolutionAnalyzer,
 )
 
-import logging
-
-logging.basicConfig(
-    filename="formation_system.log",
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    filemode="a",
-)
-
+setup_logging()
 logger = logging.getLogger(__name__)
 
 
@@ -27,24 +22,15 @@ class IndividualSimulationRunner:
         parameter_values = ParameterLoader(self.config.parameters_path).load()
         experiments = ExperimentFactory(self.config.simulation)
         simulator = BatterySimulator(self.config.simulation, parameter_values)
+        pipeline = FormationPipeline(experiments, simulator)
         analyzer = SolutionAnalyzer(self.config.simulation)
         run_config = self.config.simulation.section("run")
         candidate = experiments.default_formation_candidate()
 
         logger.info(f"Formation choice: {candidate}\n")
         
-        pre_step = simulator.run_solver(
-            label="pre-step", 
-            experiment=experiments.pre_step(),
-            last_state=None
-            )
-        
-        formation = simulator.run_solver(
-            label="formation",
-            experiment=experiments.formation(candidate),
-            last_state=pre_step.last_state,
-        )
-        formation_time_h = (formation.t[-1] - formation.t[0]) / 3600
+        formation = pipeline.formation(candidate, label="formation")
+        formation_time_h = pipeline.formation_time_h(formation)
         logger.info(f"Formation simulation time: {formation_time_h:.2f} hours\n")
 
         capacity_check = experiments.capacity_check()
@@ -55,11 +41,7 @@ class IndividualSimulationRunner:
         )
 
         aging_cycles = run_config["aging_cycles"]
-        aging = simulator.run_solver(
-            label="aging",
-            experiment=experiments.aging(aging_cycles),
-            last_state=formation.last_state,
-        )
+        aging = pipeline.aging(formation, aging_cycles, label="aging")
 
         aging_check = simulator.run_solver(
             label="post-aging C/20 check",
