@@ -39,6 +39,11 @@ tempCodeRunnerFile.py
 *.pkl
 *.ckpt
 *.csv
+metadata.json
+
+# Generated plots
+surrogate/plots/
+/plots/
 
 # Project-specific
 analysis/*
