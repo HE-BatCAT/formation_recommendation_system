@@ -1,14 +1,12 @@
 import csv
 import itertools
+import logging
 import math
 import time
 from dataclasses import asdict
 
-import numpy as np
-
 from simulations import FormationCandidate
-
-import logging
+from surrogate.targets import TARGETS
 
 logger = logging.getLogger(__name__)
 
@@ -91,16 +89,14 @@ class FormationOptimizer:
     def __init__(
         self,
         mco_config,
-        experiment_factory,
-        simulator,
+        pipeline,
         analyzer,
         results_dir,
         surrogate_predictor=None,
         trajectory_featurizer=None,
     ):
         self.config = mco_config.data
-        self.experiments = experiment_factory
-        self.simulator = simulator
+        self.pipeline = pipeline
         self.analyzer = analyzer
         self.grid = CandidateGrid(self.config["grid"])
         self.scorer = CandidateScorer(self.config["weights"])
@@ -115,19 +111,14 @@ class FormationOptimizer:
         mode = "surrogate" if use_surrogate else "PyBaMM ageing"
         logger.info(f"Evaluating {len(candidates)} candidates using {mode}")
 
-        pre_step = self.simulator.run_solver("pre-step", self.experiments.pre_step())
+        self.pipeline.pre_step()
         results = []
         failures = []
         for index, candidate in enumerate(candidates, start=1):
             logger.info(f"Candidate {index}/{len(candidates)}: {candidate}")
             started = time.perf_counter()
             try:
-                result = self._evaluate(
-                    candidate,
-                    pre_step.last_state,
-                    recommendation,
-                    use_surrogate,
-                )
+                result = self._evaluate(candidate, recommendation, use_surrogate)
                 result["runtime_s"] = time.perf_counter() - started
                 results.append(result)
                 logger.info(
@@ -158,15 +149,10 @@ class FormationOptimizer:
             return False
         return available
 
-    def _evaluate(self, candidate, pre_step_state, recommendation, use_surrogate):
-        formation_solution = self.simulator.solve(
-            self.experiments.formation(candidate),
-            pre_step_state,
-        )
+    def _evaluate(self, candidate, recommendation, use_surrogate):
+        formation_solution = self.pipeline.formation(candidate)
         result = asdict(candidate)
-        result["formation_time_h"] = (
-            formation_solution.t[-1] - formation_solution.t[0]
-        ) / 3600
+        result["formation_time_h"] = self.pipeline.formation_time_h(formation_solution)
 
         if use_surrogate:
             features = self.trajectory_featurizer.extract(formation_solution)
@@ -176,9 +162,8 @@ class FormationOptimizer:
             )
             metrics = self._metrics_from_predictions(predictions)
         else:
-            aging_solution = self.simulator.solve(
-                self.experiments.aging(recommendation["aging_cycles"]),
-                formation_solution.last_state,
+            aging_solution = self.pipeline.aging(
+                formation_solution, recommendation["aging_cycles"]
             )
             metrics = self._metrics_from_solution(aging_solution)
 
@@ -191,13 +176,13 @@ class FormationOptimizer:
     def _metrics_from_predictions(self, predictions):
         pairs = {
             key: (float(predictions[key].iloc[0]), float(predictions[key].iloc[-1]))
-            for key in ("capacity", "plating", "sei", "resistance")
+            for key in TARGETS
         }
         return self._metrics_from_pairs(pairs)
 
     def _metrics_from_pairs(self, pairs):
         result = {}
-        for key in ("capacity", "plating", "sei", "resistance"):
+        for key in TARGETS:
             start, final = pairs[key]
             result[f"{key}_start"] = start
             result[f"{key}_final"] = final
