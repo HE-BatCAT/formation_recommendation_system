@@ -50,9 +50,6 @@ class IndividualSimulationRunner:
         )
 
         self._print_checkup_table(analyzer, formation_check, aging_check)
-        logger.info(analyzer.results_table(aging, aging_cycles))
-        logger.info("")
-        logger.info(analyzer.diagnostics_table(aging))
 
         plots_dir = self.config.resolve_path(run_config["plots_dir"])
         saved_plots = ResultPlotter(analyzer, plots_dir).plot_outputs(aging)
