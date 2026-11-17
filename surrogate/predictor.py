@@ -3,13 +3,15 @@ import json
 import joblib
 import pandas as pd
 
+from surrogate.estimators import model_dir
+
 
 class SurrogatePredictor:
+    """XGBoost surrogate used by the MCO, loaded from ``models_dir/xgboost/``."""
+
     def __init__(self, surrogate_config, project_config):
         self.config = surrogate_config.data
-        self.models_dir = project_config.resolve_path(
-            self.config["paths"]["models_dir"]
-        )
+        self.models_dir = model_dir(project_config, "xgboost")
         self.metadata_path = self.models_dir / "metadata.json"
         self._models = None
         self._metadata = None
@@ -39,7 +41,8 @@ class SurrogatePredictor:
         frame = pd.DataFrame(rows).reindex(columns=feature_columns)
         predictions = pd.DataFrame({"ageing_cycle": cycle_numbers})
         for target, model in self._models.items():
-            predictions[target] = model.predict(frame)
+            # XGBoost pipelines are fitted on numpy arrays, not DataFrames.
+            predictions[target] = model.predict(frame.to_numpy(dtype=float))
         return predictions
 
     def _load(self):
