@@ -74,33 +74,3 @@ label = "Local ECM Resistance [Ohm]"
 variable = "Local ECM resistance [Ohm]"
 filename = "local_ecm_resistance.png"
 aggregation = "end"
-
-[[diagnostics]]
-label = "Negative active material volume fraction"
-variable = "X-averaged negative electrode active material volume fraction"
-physical_range = [0.0, 1.0]
-
-[[diagnostics]]
-label = "Positive active material volume fraction"
-variable = "X-averaged positive electrode active material volume fraction"
-physical_range = [0.0, 1.0]
-
-# [[diagnostics]]
-# label = "Negative electrode porosity"
-# variable = "X-averaged negative electrode porosity"
-# physical_range = [0.0, 1.0]
-
-# [[diagnostics]]
-# label = "Positive electrode porosity"
-# variable = "X-averaged positive electrode porosity"
-# physical_range = [0.0, 1.0]
-
-# [[diagnostics]]
-# label = "Negative plated lithium [mol.m-3]"
-# variable = "X-averaged negative lithium plating concentration [mol.m-3]"
-# physical_range = [0.0, 1e20]
-
-# [[diagnostics]]
-# label = "Cell temperature [K]"
-# variable = "Volume-averaged cell temperature [K]"
-# physical_range = [250.0, 400.0]
