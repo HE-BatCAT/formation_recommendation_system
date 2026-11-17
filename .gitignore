@@ -38,6 +38,7 @@ tempCodeRunnerFile.py
 *.pth
 *.pkl
 *.ckpt
+*.csv
 
 # Project-specific
 analysis/*
