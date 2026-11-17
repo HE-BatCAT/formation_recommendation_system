@@ -2,12 +2,10 @@ import numpy as np
 
 
 class SolutionAnalyzer:
-    """Extracts per-cycle ageing metrics and diagnostics from a PyBaMM solution."""
+    """Extracts per-cycle ageing metrics from a PyBaMM solution."""
 
     def __init__(self, simulation_config):
-        config = simulation_config.data
-        self.output_specs = config["outputs"]
-        self.diagnostic_specs = config["diagnostics"]
+        self.output_specs = simulation_config.data["outputs"]
         self.output_by_key = {spec["key"]: spec for spec in self.output_specs}
 
     # ------------------------------------------------------------------ cycles
@@ -88,42 +86,3 @@ class SolutionAnalyzer:
     def measured_resistance(self, check_solution):
         last_step = self.experiment_cycles(check_solution)[-1].steps[-1]
         return self.variable_end(last_step, self.output_by_key["resistance"]["variable"])
-
-    # ------------------------------------------------------------------ tables
-
-    @staticmethod
-    def _format_table(title, rows, label_width, value_width, value_format):
-        lines = [
-            title,
-            f"{'Metric':<{label_width}} {'Start':>{value_width}} {'Final':>{value_width}}",
-            f"{'-' * label_width} {'-' * value_width} {'-' * value_width}",
-        ]
-        lines += [
-            f"{label:<{label_width}} {start:>{value_width}{value_format}} {final:>{value_width}{value_format}}"
-            for label, start, final in rows
-        ]
-        return "\n".join(lines)
-
-    def results_table(self, solution, cycle_count):
-        metrics = self.first_and_last_metrics(solution)
-        rows = [(spec["label"], *metrics[spec["key"]]) for spec in self.output_specs]
-        return self._format_table(
-            f"Ageing results after {cycle_count} cycles:", rows, 50, 12, ".3f"
-        )
-
-    def diagnostics_table(self, solution):
-        cycles = self.experiment_cycles(solution)
-        first, last = cycles[0], cycles[-1]
-        rows, warnings = [], []
-        for spec in self.diagnostic_specs:
-            label, variable = spec["label"], spec["variable"]
-            start, final = self.variable_end(first, variable), self.variable_end(last, variable)
-            rows.append((label, start, final))
-            low, high = spec["physical_range"]
-            if np.isfinite(final) and not low <= final <= high:
-                warnings.append(f"{label} outside [{low}, {high}]: {final:.6g}")
-
-        table = self._format_table("Physical-state diagnostics:", rows, 48, 14, ".6g")
-        if warnings:
-            table += "\n\nPhysical-state warnings:\n" + "\n".join(f"- {w}" for w in warnings)
-        return table
