@@ -68,6 +68,7 @@ class ForecastTrainer:
         x = np.concatenate([p[0] for p in pairs])
         y = np.concatenate([p[1] for p in pairs])
         np.random.seed(seed)
+        torch.manual_seed(seed)
         device = "cuda" if torch.cuda.is_available() else "cpu"
         model = build_forecaster(arm, self.lookback, self.block, len(self.indicators), custom=custom)
         model, epochs, _ = fit(
@@ -265,6 +266,14 @@ class ForecastTrainer:
             for records in complete.values():
                 cands = [c for r in records for c in r["candidates"]]
                 ok = [c for c in cands if not c["diverged"]]
+                if not ok:
+                    per_seed.append(dict(
+                        median=float("inf"), worst=float("inf"),
+                        indicator=np.full(len(self.indicators), np.inf),
+                        diverged=len(cands),
+                        rank=float("nan"),
+                    ))
+                    continue
                 mean_error = np.array([np.mean(c["nrmse"]) for c in ok])
                 by_indicator = np.array([c["nrmse"] for c in ok])
                 per_seed.append(dict(

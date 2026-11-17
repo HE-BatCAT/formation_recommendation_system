@@ -80,8 +80,11 @@ def main():
     for folder in folders:
         metadata = json.loads((folder / "metadata.json").read_text(encoding="utf-8"))
         if metadata.get("backend") == "torch":
-            note = (f"{metadata['arm']}, certified contraction: {metadata['certified_contraction']}, "
-                    f"reload check: {verify(folder, config, training)}")
+            try:
+                note = (f"{metadata['arm']}, certified contraction: {metadata['certified_contraction']}, "
+                        f"reload check: {verify(folder, config, training)}")
+            except Exception as error:
+                note = f"{metadata['arm']}, reload failed ({type(error).__name__}: {error})"
         else:
             note = metadata.get("model_type", "xgboost")
         print(f"  {folder.name:40} {note}")

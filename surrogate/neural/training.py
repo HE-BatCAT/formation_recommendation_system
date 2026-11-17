@@ -83,6 +83,8 @@ class NeuralTrainer:
 
     def _fit_neural(self, arm, train, validation, seed, custom=None, budget=None):
         """arm: a registered arm. custom: {"kind", "variant", "overrides", "training"} for a search trial."""
+        import torch
+
         from .models import build, build_custom, count_parameters, fit, training_overrides
 
         x_train, y_train = self.arrays(train)
@@ -91,6 +93,7 @@ class NeuralTrainer:
         scale_x = lambda x: ((x - stats["mu_x"]) / stats["sd_x"]).astype(np.float32)
         scale_y = lambda y: ((y - stats["mu_y"]) / stats["sd_y"]).astype(np.float32)
         np.random.seed(seed)
+        torch.manual_seed(seed)
         if custom is None:
             model = build(arm, x_train.shape[-1], len(TARGETS), self.count)
             optimizer = training_overrides(arm)
