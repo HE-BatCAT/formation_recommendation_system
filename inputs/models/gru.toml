@@ -1,0 +1,21 @@
+# GRU surrogate (surrogate/estimators/gru_estimator.py).
+# Small, heavily regularised GRU: only ~128 protocols, so capacity is kept low.
+
+# Network
+sequence_stride = 4          # average-pool 256 samples -> 64 time steps
+hidden_size = 32
+num_layers = 1
+head_hidden_size = 32
+dropout = 0.2
+
+# Training (defaults for any key left out: surrogate/estimators/torch_estimator.py)
+input_noise_std = 0.02       # augmentation noise, in standardised input units
+learning_rate = 1e-3
+weight_decay = 1e-3          # AdamW
+batch_size = 16              # protocols per batch
+max_epochs = 50
+patience = 10              # early stopping on validation protocols
+min_delta = 1e-4
+grad_clip_norm = 1.0
+seed = 0                     # weight initialisation and batch order
+device = "cpu"               # tiny model: CPU is faster than MPS and deterministic
