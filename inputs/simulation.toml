@@ -1,22 +1,39 @@
+# =============================================================================
+# PyBaMM simulation settings
+# =============================================================================
+# Read by simulations/ (BatterySimulator, ExperimentFactory, SolutionAnalyzer)
+# and therefore by every script that simulates: run_simulation.py,
+# run_recommendation.py, surrogate.create_dataset, surrogate.validate_protocol.
+# Cell parameters are in inputs/parameters.toml.
+#
+# Changing anything here changes the physics: regenerate the surrogate dataset
+# (python -m surrogate.create_dataset --force) and retrain.
+
 [solver]
+# pybamm.IDAKLUSolver tolerances; tighter = slower but more accurate.
 relative_tolerance = 1e-6
 absolute_tolerance = 1e-6
 
 [model.options]
+# Passed unchanged to pybamm.lithium_ion.DFN(options=...). Any DFN option can
+# be added; new mechanisms may need parameters in parameters.toml.
 "open-circuit potential" = "single"
 "intercalation kinetics" = "symmetric Butler-Volmer"
-thermal = "lumped"
-"surface form" = "algebraic"
+thermal = "lumped"                         # "isothermal", "lumped", "x-full"
+"surface form" = "algebraic"               # "false", "differential", "algebraic"
 "surface temperature" = "lumped"
-SEI = "solvent-diffusion limited"
-"SEI film resistance" = "distributed"
+SEI = "solvent-diffusion limited"          # "none", "constant", "reaction limited", "electron-migration limited", ...
+"SEI film resistance" = "distributed"      # "none", "distributed", "average"
 "SEI porosity change" = "true"
-"lithium plating" = "irreversible"
+"lithium plating" = "irreversible"         # "none", "reversible", "partially reversible", "irreversible"
 "lithium plating porosity change" = "true"
 "SEI on cracks" = "false"
-"loss of active material" = "reaction-driven"
+"loss of active material" = "reaction-driven" # "none", "stress-driven", "reaction-driven", ...
 
 [experiments]
+# PyBaMM experiment strings.
+# pre_step runs once before every formation (initial wetting/charge); it is
+# simulated but not used as a surrogate feature because it never changes.
 pre_step = [
   "Rest for 2 minutes",
   "Charge at 0.05C until 2.0V",
@@ -25,28 +42,45 @@ pre_step = [
   "Charge at 0.333C for 15 minutes",
   "Rest for 4320 minutes",
 ]
+# One ageing cycle; repeated aging_cycles times after formation.
 aging = [
   "Charge at 1.8C until 4.1V",
   "Discharge at 1.5C until 2.5V",
 ]
 
 [formation]
-charge_voltage = 4.1
-discharge_voltage = 2.7
-default_charge_rate = 0.1
-default_discharge_rate = 0.1
-default_rest_minutes = 0.1
-default_cycles = 3
+# A formation cycle is: charge at x1 C until charge_voltage, rest x3 minutes,
+# discharge at x2 C until discharge_voltage; repeated x4 times.
+charge_voltage = 4.1         # [V] shared by every script
+discharge_voltage = 2.7      # [V] shared by every script
+# Default protocol simulated by run_simulation.py (MCO and dataset use their own grids).
+default_charge_rate = 0.1    # x1 [C]
+default_discharge_rate = 0.1 # x2 [C]
+default_rest_minutes = 0.1   # x3 [min]
+default_cycles = 3           # x4
 
 [capacity_check]
+# Slow check-up cycle used by run_simulation.py after formation and after
+# ageing to measure practical capacity and ECM resistance.
 c_rate = 0.05
-upper_voltage = 4.1
-lower_voltage = 2.7
+upper_voltage = 4.1          # [V]
+lower_voltage = 2.7          # [V]
 
 [run]
+# run_simulation.py only.
 aging_cycles = 500
 plots_dir = "plots"
 
+# -----------------------------------------------------------------------------
+# Tracked ageing metrics. The keys capacity, plating, sei and resistance are
+# the surrogate targets and MCO objectives (surrogate/targets.py).
+#   key         short name used in code, dataset and results
+#   label       plot axis label
+#   variable    PyBaMM variable read from the solution
+#   filename    plot written by run_simulation.py to [run] plots_dir
+#   aggregation "discharge_step": Ah delivered in the cycle's last step
+#               "end":            value at the end of the cycle
+# -----------------------------------------------------------------------------
 [[outputs]]
 key = "capacity"
 label = "Discharge Capacity [A.h]"

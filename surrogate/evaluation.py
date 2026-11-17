@@ -20,13 +20,15 @@ METRICS = ("mae", "rmse", "r2", "mape_pct")
 
 
 def regression_metrics(actual, predicted):
+    """MAE, RMSE, R^2 and MAPE (%) of one target; R^2 is NaN for a single row."""
     actual = np.asarray(actual, dtype=float)
     predicted = np.asarray(predicted, dtype=float)
     return {
         "mae": mean_absolute_error(actual, predicted),
         "rmse": math.sqrt(mean_squared_error(actual, predicted)),
         "r2": r2_score(actual, predicted) if len(actual) > 1 else np.nan,
-        # Scale-free, so errors are comparable across targets.
+        # Scale-free, so errors are comparable across targets. Inflated for
+        # targets with values near zero (e.g. plating at early cycles).
         "mape_pct": float(
             np.mean(np.abs(predicted - actual) / np.maximum(np.abs(actual), 1e-12)) * 100
         ),
@@ -70,10 +72,8 @@ def score_split(model, fold, split, protocol_keys, cycles, actual, predicted):
 
 
 def summarize_cv(cv_metrics):
-    """Mean and standard deviation of each metric across folds, per split and target."""
-    summary = cv_metrics.groupby(["split", "target"])[list(METRICS)].agg(["mean", "std"])
-    summary.columns = [f"{metric}_{statistic}" for metric, statistic in summary.columns]
-    summary = summary.reset_index()
+    """Mean of each metric across folds, per split and target."""
+    summary = cv_metrics.groupby(["split", "target"])[list(METRICS)].mean().reset_index()
     summary["split"] = pd.Categorical(summary["split"], ["train", "validation", "test"])
     summary["target"] = pd.Categorical(summary["target"], list(TARGETS))
     return summary.sort_values(["split", "target"]).reset_index(drop=True)

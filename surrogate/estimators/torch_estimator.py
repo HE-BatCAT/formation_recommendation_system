@@ -37,6 +37,8 @@ import matplotlib.pyplot as plt
 
 logger = logging.getLogger(__name__)
 
+#: Training defaults for every torch model; overridden by the estimator's
+#: DEFAULTS, then by inputs/models/<name>.toml.
 DEFAULT_TRAINING = {
     "sequence_stride": 1,
     "input_noise_std": 0.0,
@@ -112,15 +114,18 @@ class TorchEstimator(SurrogateEstimator):
 
     def __init__(self, project_config, name, models_dir, plots_dir):
         super().__init__(project_config, name, models_dir, plots_dir)
+        # Precedence (last wins): training defaults < model DEFAULTS < TOML file.
         self.params = {**DEFAULT_TRAINING, **self.DEFAULTS, **self.params}
         self.device = torch.device(self.params["device"])
         self.model, self.history = None, None
 
     def build_network(self):
+        """Return the ``nn.Module``; implemented by each torch model."""
         raise NotImplementedError
 
     # ------------------------------------------------------------ training
     def train(self):
+        """K-fold CV (fit + score per fold), then the final model; returns the CV summary."""
         dataset = FormationDataset(
             self.load_dataset(), self.featurizer, TARGETS, self.params["sequence_stride"]
         )
@@ -164,6 +169,7 @@ class TorchEstimator(SurrogateEstimator):
         )
 
     def _new_model(self):
+        """Fresh network wrapped with (still unfitted) standardisation."""
         model = ScaledModel(
             self.build_network(),
             len(self.featurizer.CHANNELS),
@@ -173,6 +179,10 @@ class TorchEstimator(SurrogateEstimator):
         return model.to(self.device)
 
     def _fit(self, dataset, train, validation):
+        """Train on ``train`` protocols, early-stop on ``validation``; returns (model, history).
+
+        The weights of the best validation epoch are restored at the end.
+        """
         p = self.params
         torch.manual_seed(p["seed"])
         model = self._new_model()
@@ -246,6 +256,7 @@ class TorchEstimator(SurrogateEstimator):
         return model.scaling.inverse(output).cpu()
 
     def _score(self, dataset, indices, model, fold, split):
+        """Metric and prediction rows for ``indices``; (protocol, cycle) pairs with NaN are skipped."""
         cycles = dataset.cycles.expand(len(indices), -1)
         predicted = self._predict(model, dataset.sequences[indices], cycles).numpy()
         actual = dataset.targets[indices].numpy()
@@ -263,6 +274,7 @@ class TorchEstimator(SurrogateEstimator):
 
     # ---------------------------------------------------------- prediction
     def predict(self, frame):
+        """One prediction per row of ``frame`` at that row's ``ageing_cycle``."""
         sequence = torch.from_numpy(
             formation_sequences(frame, self.featurizer, self.params["sequence_stride"])
         )
@@ -272,6 +284,7 @@ class TorchEstimator(SurrogateEstimator):
 
     # --------------------------------------------------------- persistence
     def _model_file(self):
+        """``models_dir/<name>.pt``: params + state dict (network and scaling buffers)."""
         return self.models_dir / f"{self.name}.pt"
 
     def _save_model(self):
@@ -280,6 +293,7 @@ class TorchEstimator(SurrogateEstimator):
         logger.info(f"Saved {self.name} model to {self._model_file()}")
 
     def load_final_model(self):
+        """Rebuild the network from the saved params (not the current TOML) and load its weights."""
         saved = torch.load(self._model_file(), map_location="cpu", weights_only=True)
         self.params = saved["params"]
         self.device = torch.device("cpu")
@@ -288,6 +302,7 @@ class TorchEstimator(SurrogateEstimator):
         self.model.eval()
 
     def _plot_learning_curve(self):
+        """Final model's train/validation loss per epoch -> plots_dir/learning_curve.png."""
         self.plots_dir.mkdir(parents=True, exist_ok=True)
         figure, axis = plt.subplots(figsize=(9, 5))
         axis.plot(self.history["train"], linewidth=1.2, label="train")

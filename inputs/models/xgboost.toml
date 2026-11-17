@@ -1,16 +1,26 @@
-# XGBoost surrogate (surrogate/estimators/xgboost_estimator.py).
-# Every key is passed to xgboost.XGBRegressor; one regressor per target.
-n_estimators = 500
-learning_rate = 0.01
-max_depth = 6
-min_child_weight = 2
-subsample = 0.8
-colsample_bytree = 0.8
-reg_alpha = 0.0
-reg_lambda = 1.0
+# =============================================================================
+# XGBoost surrogate  (surrogate/estimators/xgboost_estimator.py)
+# =============================================================================
+# One SimpleImputer -> StandardScaler -> XGBRegressor pipeline per target,
+# trained on the flat 2 x 256 formation features plus the ageing cycle.
+#
+# Train:      python -m surrogate.train_models --model xgboost
+# Use in MCO: set surrogate_model = "xgboost" in inputs/mco.toml
+#
+# Every key is passed unchanged to xgboost.XGBRegressor(**params), so any
+# XGBRegressor argument can be added here. Changes only need retraining.
+
+n_estimators = 500           # number of boosted trees
+learning_rate = 0.01         # shrinkage per tree; lower needs more trees
+max_depth = 6                # maximum tree depth
+min_child_weight = 2         # minimum hessian sum in a leaf; higher = more conservative
+subsample = 0.8              # fraction of rows sampled per tree
+colsample_bytree = 0.8       # fraction of feature columns sampled per tree
+reg_alpha = 0.0              # L1 regularisation on leaf weights
+reg_lambda = 1.0             # L2 regularisation on leaf weights
 objective = "reg:squarederror"
 eval_metric = "rmse"
-tree_method = "hist"
+tree_method = "hist"         # "hist" (fast) or "exact"
 random_state = 42
-n_jobs = -1
-verbosity = 0
+n_jobs = -1                  # -1 = all CPU cores
+verbosity = 0                # 0 silent ... 3 debug

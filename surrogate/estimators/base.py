@@ -11,7 +11,7 @@ model file(s) it writes:
     cv_predictions.csv  out-of-fold test prediction for every protocol
     metadata.json       final-model description (read when loading the model)
 
-Per-fold metrics and the mean/std summary across folds go to the log.
+Per-fold metrics and the mean across folds go to the log.
 """
 
 import json
@@ -27,12 +27,14 @@ logger = logging.getLogger(__name__)
 
 
 class SurrogateEstimator:
+    """Base class of every surrogate; subclasses implement ``train``/``predict``/``load_final_model``."""
+
     def __init__(self, project_config, name, models_dir, plots_dir):
         self.project_config = project_config
-        self.name = name
-        self.config = project_config.surrogate.data
+        self.name = name                              # registry name: xgboost, gru, custom
+        self.config = project_config.surrogate.data   # surrogate.toml
         self.split = self.config["split"]
-        self.params = project_config.model_config(name)
+        self.params = project_config.model_config(name)  # inputs/models/<name>.toml
         self.featurizer = TrajectoryFeaturizer(project_config.surrogate)
         self.feature_columns = self.featurizer.feature_columns()
         self.models_dir = models_dir
@@ -54,6 +56,7 @@ class SurrogateEstimator:
 
     # ------------------------------------------------------------- shared
     def load_dataset(self):
+        """The dataset CSV, without rows missing any feature or target."""
         path = self.project_config.resolve_path(self.config["paths"]["dataset"])
         if not path.exists():
             raise FileNotFoundError(
@@ -66,12 +69,17 @@ class SurrogateEstimator:
         return data.reset_index(drop=True)
 
     def save_results(self, metric_rows, prediction_rows, metadata):
+        """Log fold metrics and their mean, write cv_predictions.csv, plots and metadata.json.
+
+        ``metric_rows``/``prediction_rows`` come from ``evaluation.score_split``;
+        ``metadata`` is merged into metadata.json. Returns the CV summary table.
+        """
         self.models_dir.mkdir(parents=True, exist_ok=True)
         cv_metrics = pd.DataFrame(metric_rows)
         cv_predictions = pd.DataFrame(prediction_rows)
         summary = summarize_cv(cv_metrics)
         self._log_table("cross-validation metrics per fold", self._by_split_target_fold(cv_metrics))
-        self._log_table("cross-validation summary (mean and std across folds)", summary)
+        self._log_table("cross-validation summary (mean across folds)", summary)
 
         cv_predictions.to_csv(self.models_dir / "cv_predictions.csv", index=False)
         if self.plotting:
@@ -96,6 +104,7 @@ class SurrogateEstimator:
 
     @staticmethod
     def _by_split_target_fold(cv_metrics):
+        """Per-fold metrics ordered train/validation/test, then by target and fold."""
         table = cv_metrics.drop(columns="model")
         table["split"] = pd.Categorical(table["split"], ["train", "validation", "test"])
         table["target"] = pd.Categorical(table["target"], list(TARGETS))

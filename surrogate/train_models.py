@@ -1,3 +1,14 @@
+"""Entry point: cross-validate and train surrogate models on the existing dataset.
+
+    python -m surrogate.train_models                        # xgboost (default)
+    python -m surrogate.train_models --model custom
+    python -m surrogate.train_models --model gru custom     # or --model all
+
+Never runs PyBaMM; needs ``surrogate/dataset.csv`` (surrogate.create_dataset).
+Each model writes to ``surrogate/models/<model>/``; fold metrics and the
+cross-validation summary go to ``formation_system.log``.
+"""
+
 import argparse
 import logging
 import subprocess
@@ -32,6 +43,7 @@ class TrainingCommand:
             sys.exit(1)
 
     def _train(self, model):
+        """Train one model in this process and print its mean test metrics."""
         logger.info(f"===== Training surrogate model: {model} =====")
         print(f"Training {model} (cross-validation + final model) ...", flush=True)
         estimator = create_estimator(model, ProjectConfig())
@@ -42,8 +54,8 @@ class TrainingCommand:
             print(f"  skipped {model}: {error}")
             return
         test = summary[summary["split"] == "test"]
-        columns = ["target", "mae_mean", "mae_std", "rmse_mean", "rmse_std", "r2_mean", "r2_std"]
-        print(f"Test metrics across {estimator.split['cv_folds']} folds (mean and std):")
+        columns = ["target", "mae", "rmse", "r2"]
+        print(f"Test metrics, mean across {estimator.split['cv_folds']} folds:")
         print(test[columns].to_string(index=False, float_format=lambda v: f"{v:.4g}"))
         print(f"  artifacts: {estimator.models_dir}", flush=True)
 

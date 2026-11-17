@@ -1,33 +1,55 @@
+# =============================================================================
+# Surrogate dataset, features, splits and plots
+# =============================================================================
+# Read by surrogate/create_dataset.py (dataset), surrogate/features.py
+# (features) and every estimator in surrogate/estimators/ (split, plots).
+# Model hyper-parameters live in inputs/models/<model>.toml.
+#
+# Changes to [data], [signals] or [grid] need a new dataset:
+#     python -m surrogate.create_dataset --force
+# Changes to [split] or [plots] only need retraining.
+
 [paths]
-dataset = "surrogate/dataset.csv"
-failed_candidates = "surrogate/failed_candidates.csv"
-models_dir = "surrogate/models"
-plots_dir = "surrogate/plots"
+# Relative paths are resolved from the project root.
+dataset = "surrogate/dataset.csv"                    # one row per (protocol, ageing cycle)
+failed_candidates = "surrogate/failed_candidates.csv" # protocols PyBaMM could not simulate
+models_dir = "surrogate/models"                      # each model writes to models_dir/<model>/
+plots_dir = "surrogate/plots"                        # each model writes to plots_dir/<model>/
 
 [data]
-aging_cycles = 500
+aging_cycles = 500           # PyBaMM ageing cycles simulated per protocol
+# Ageing cycles stored as targets (1-based, <= aging_cycles). Denser example:
 # training_ageing_mesh = [1, 2, 5, 10, 20, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500]
+# The custom (PatchAttention) model predicts exactly these cycles; other
+# cycles are interpolated in log-cycle between them.
 training_ageing_mesh = [1, 500]
+# Samples per formation signal, evenly spaced in time (linear interpolation).
+# Inputs = 2 signals x trajectory_feature_count (+ ageing cycle for XGBoost).
+# The custom model needs (trajectory_feature_count / sequence_stride) divisible by patch_len.
 trajectory_feature_count = 256
 
 [signals]
+# PyBaMM variable names of the formation signals the featurizer reads.
 time = "Time [s]"
 voltage = "Terminal voltage [V]"
 current = "Current [A]"
 
 [grid]
-x1_charge_rate = [0.01, 0.1, 0.5, 1.3]
-x2_discharge_rate = [0.01, 0.1, 0.5, 1.3]
-x3_rest_minutes = [0.1, 30.0, 60.0, 120.0]
-x4_num_cycles = [1, 3]
+# Formation protocols simulated for the training dataset (Cartesian product:
+# 4 x 4 x 4 x 2 = 128 protocols). Independent of the MCO grid in mco.toml.
+x1_charge_rate = [0.01, 0.1, 0.5, 1.3]     # formation charge C-rate
+x2_discharge_rate = [0.01, 0.1, 0.5, 1.3]  # formation discharge C-rate
+x3_rest_minutes = [0.1, 30.0, 60.0, 120.0] # rest between charge and discharge [min]
+x4_num_cycles = [1, 3]                     # number of formation cycles
 
 [split]
 # Same ratios for every model; each model splits with its own tooling
-# (numpy for XGBoost, torch.utils.data for GRU/custom). Splits are by protocol.
+# (numpy for XGBoost, torch.utils.data for GRU/custom). Splits are by protocol,
+# so all ageing cycles of one protocol stay in the same split.
 cv_folds = 7                        # K-fold CV: each fold tests 1/7 (~14%) of protocols
-validation_fraction_of_train = 0.18 # of the non-test protocols, for early stopping
-random_state = 42
+validation_fraction_of_train = 0.18 # of the non-test protocols, for early stopping (torch models)
+random_state = 42                   # fold assignment; same seed = same folds for every model
 
 [plots]
-enabled = false              # true: save trajectory (and GRU learning-curve) plots
-max_test_protocols = 2
+enabled = false              # true: save out-of-fold trajectory plots (and torch learning curves)
+max_test_protocols = 2       # protocols drawn per trajectory plot

@@ -1,6 +1,16 @@
 # PyBaMM parameter configuration for this simulation.
 # Base values are exported from pybamm.ParameterValues("Mohtat2020").
 # Later entries with the same name override earlier values.
+#
+# Loaded by simulations/parameters.py (ParameterLoader) into
+# pybamm.ParameterValues. Each [[parameter]] entry has:
+#   name   exact PyBaMM parameter name (with units)
+#   type   "float", "int", "str", "list" or "function"
+#   value  native TOML value; for "function" an import reference
+#          "module.path:function_name", e.g.
+#          "pybamm.input.parameters.lithium_ion.Mohtat2020:graphite_diffusivity_PeymanMPM"
+# Project-specific overrides are appended at the end of the file.
+# Any change here alters the physics: regenerate the surrogate dataset and retrain.
 
 [metadata]
 base_parameter_set = "Mohtat2020"

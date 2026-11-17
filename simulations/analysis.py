@@ -1,3 +1,10 @@
+"""Read ageing metrics (capacity, plating, SEI, resistance) out of PyBaMM solutions.
+
+Which metrics exist, and how each is read, comes from ``[[outputs]]`` in
+``simulation.toml``: ``aggregation = "discharge_step"`` gives Ah delivered in
+the cycle's last step, ``"end"`` gives the variable's value at cycle end.
+"""
+
 import numpy as np
 
 
@@ -12,7 +19,11 @@ class SolutionAnalyzer:
 
     @staticmethod
     def experiment_cycles(solution):
-        """Cycles with nonzero duration (drops empty/initialisation cycles)."""
+        """Cycles with nonzero duration (drops empty/initialisation cycles).
+
+        A solution started from ``last_state`` can carry a zero-length cycle
+        over from the previous run; dropping it keeps cycle 1 = first real cycle.
+        """
         cycles = [
             cycle for cycle in solution.cycles
             if len(time := cycle["Time [s]"].entries) > 1 and time[-1] > time[0]
@@ -38,6 +49,7 @@ class SolutionAnalyzer:
         return float(capacity[-1] - capacity[0])
 
     def metric_value(self, cycle, spec):
+        """One metric of one cycle, read as its ``aggregation`` says."""
         if spec["aggregation"] == "discharge_step":
             return self.discharge_capacity(cycle)
         return self.variable_end(cycle, spec["variable"])
@@ -53,6 +65,7 @@ class SolutionAnalyzer:
         """``{cycle: {key: value}}`` for 1-based ageing cycles present in ``solution``.
 
         Only the requested cycles are evaluated, not the full trajectory.
+        Cycles beyond the solution's length are silently skipped.
         """
         experiment = self.experiment_cycles(solution)
         specs = [(key, self.output_by_key[key]) for key in keys]
@@ -81,8 +94,10 @@ class SolutionAnalyzer:
     # ----------------------------------------------------------- check-ups
 
     def measured_capacity(self, check_solution):
+        """Capacity [Ah] from a ``capacity_check`` solution (its discharge step)."""
         return self.discharge_capacity(self.experiment_cycles(check_solution)[-1])
 
     def measured_resistance(self, check_solution):
+        """ECM resistance [Ohm] at the end of a ``capacity_check`` solution."""
         last_step = self.experiment_cycles(check_solution)[-1].steps[-1]
         return self.variable_end(last_step, self.output_by_key["resistance"]["variable"])

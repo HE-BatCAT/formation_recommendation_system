@@ -1,3 +1,5 @@
+"""PyBaMM model/solver construction and solving of one experiment."""
+
 import time
 
 import pybamm
@@ -6,12 +8,21 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class BatterySimulator:
+    """DFN model + IDAKLU solver configured from ``simulation.toml``.
+
+    It only solves experiments; which experiments to run is decided by
+    ``ExperimentFactory`` / ``FormationPipeline`` and results are read by
+    ``SolutionAnalyzer``.
+    """
+
     def __init__(self, simulation_config, parameter_values):
         self.config = simulation_config.data
         self.parameter_values = parameter_values
 
     def build_model(self):
+        """A fresh DFN with the degradation sub-models in ``[model.options]``."""
         return pybamm.lithium_ion.DFN(options=self.config["model"]["options"])
 
     def build_solver(self):
@@ -22,6 +33,7 @@ class BatterySimulator:
         )
 
     def solve(self, experiment, last_state=None):
+        """Solve ``experiment``; ``last_state`` continues from a previous solution's end state."""
         simulation = pybamm.Simulation(
             self.build_model(),
             experiment=experiment,
@@ -31,6 +43,7 @@ class BatterySimulator:
         return simulation.solve(starting_solution=last_state)
 
     def run_solver(self, label, experiment, last_state=None):
+        """``solve`` with the step name and its runtime written to the log."""
         logger.info(f"------Running {label}------")
         started = time.perf_counter()
         solution = self.solve(experiment, last_state)

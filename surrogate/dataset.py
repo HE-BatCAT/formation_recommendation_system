@@ -1,3 +1,11 @@
+"""Build the surrogate training dataset with PyBaMM.
+
+For every protocol in ``[grid]`` of ``surrogate.toml``: formation (from the
+shared pre-step state) -> formation features -> ageing -> targets at each
+``training_ageing_mesh`` cycle. The CSV has one row per (protocol, ageing
+cycle); all rows of a protocol share the same formation features.
+"""
+
 import csv
 import itertools
 import time
@@ -33,6 +41,10 @@ class SurrogateDatasetBuilder:
         )
 
     def create(self, force=False, limit_candidates=None):
+        """Simulate the grid and write the CSV; skipped if it exists unless ``force``.
+
+        ``limit_candidates`` keeps only the first N protocols (quick pipeline test).
+        """
         if self.dataset_path.exists() and not force:
             logger.info(f"Dataset already exists; skipping creation: {self.dataset_path}")
             return self.dataset_path
@@ -56,6 +68,7 @@ class SurrogateDatasetBuilder:
                 features = self.featurizer.extract(formation)
                 by_cycle = self.analyzer.metrics_at_cycles(aging, TARGETS, mesh)
                 for cycle_number, targets in by_cycle.items():
+                    # Skip cycles where any target is NaN/inf (e.g. variable not output).
                     if not all(np.isfinite(value) for value in targets.values()):
                         continue
                     rows.append(
@@ -69,6 +82,7 @@ class SurrogateDatasetBuilder:
                     )
                 logger.info(f"  completed in {time.perf_counter() - started:.2f} s")
             except Exception as error:
+                # A solver failure loses only this protocol; it is logged to failed_candidates.csv.
                 failures.append({**asdict(candidate), "error": str(error)})
                 logger.exception(f"  failed: {error}")
 
@@ -79,12 +93,14 @@ class SurrogateDatasetBuilder:
         return self.dataset_path
 
     def _candidates(self):
+        """Cartesian product of the ``[grid]`` lists as ``FormationCandidate``s."""
         grid = self.config["grid"]
         keys = list(grid)
         for values in itertools.product(*(grid[key] for key in keys)):
             yield FormationCandidate(**dict(zip(keys, values)))
 
     def _protocol_key(self, candidate):
+        """Unique protocol id; splits group rows by it so cycles never leak across splits."""
         return (
             f"x1={candidate.x1_charge_rate}|x2={candidate.x2_discharge_rate}|"
             f"x3={candidate.x3_rest_minutes}|x4={candidate.x4_num_cycles}"

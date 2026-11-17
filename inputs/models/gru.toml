@@ -1,21 +1,33 @@
-# GRU surrogate (surrogate/estimators/gru_estimator.py).
-# Small, heavily regularised GRU: only ~128 protocols, so capacity is kept low.
+# =============================================================================
+# GRU surrogate  (surrogate/estimators/gru_estimator.py)
+# =============================================================================
+# A GRU reads the (voltage, current) formation sequence; its last hidden state
+# and its mean output over time, plus the standardised log ageing cycle, go
+# through a small MLP head that predicts all four targets.
+# Small and regularised: the dataset has only ~128 protocols.
+#
+# Train:      python -m surrogate.train_models --model gru
+# Use in MCO: set surrogate_model = "gru" in inputs/mco.toml
+#
+# Keys left out fall back to GRUEstimator.DEFAULTS, then to DEFAULT_TRAINING
+# in surrogate/estimators/torch_estimator.py. Changes only need retraining.
 
-# Network
-sequence_stride = 4          # average-pool 256 samples -> 64 time steps
-hidden_size = 32
-num_layers = 3
-head_hidden_size = 32
-dropout = 0.2
+# -------------------------------------------------------------------- network
+sequence_stride = 4          # average-pool 256 samples by this factor: 1 -> 256, 2 -> 128, 4 -> 64 steps
+hidden_size = 32             # GRU hidden units per layer
+num_layers = 3               # stacked GRU layers (dropout is applied between layers when > 1)
+head_hidden_size = 32        # hidden width of the MLP head
+dropout = 0.2                # between GRU layers and in the head; 0.0-0.5
 
-# Training (defaults for any key left out: surrogate/estimators/torch_estimator.py)
-input_noise_std = 0.02       # augmentation noise, in standardised input units
-learning_rate = 1e-3
-weight_decay = 1e-3         # AdamW
+# ------------------------------------------------------------------- training
+# Defaults for any key left out: DEFAULT_TRAINING in torch_estimator.py.
+input_noise_std = 0.02       # Gaussian noise on standardised inputs while training; 0 = off
+learning_rate = 1e-3         # AdamW
+weight_decay = 1e-3          # AdamW decoupled weight decay
 batch_size = 16              # protocols per batch
 max_epochs = 300
-patience = 30              # early stopping on validation protocols
-min_delta = 1e-4
-grad_clip_norm = 1.0
-seed = 0                     # weight initialisation and batch order
-device = "cpu"               # tiny model: CPU is faster than MPS and deterministic
+patience = 30                # stop after this many epochs without validation improvement
+min_delta = 1e-4             # minimum validation-loss drop that counts as improvement
+grad_clip_norm = 1.0         # max gradient L2 norm
+seed = 0                     # weight initialisation and batch order (folds use [split] random_state)
+device = "cpu"               # "cpu", "mps" or "cuda"; tiny model: CPU is faster than MPS and deterministic

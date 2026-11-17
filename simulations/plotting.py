@@ -1,18 +1,23 @@
+"""Per-cycle plots of every ``[[outputs]]`` metric of an ageing solution."""
+
 from pathlib import Path
 
 import matplotlib
 import numpy as np
 
-matplotlib.use("Agg")
+matplotlib.use("Agg")  # file output only, no display needed
 import matplotlib.pyplot as plt
 
 
 class ResultPlotter:
+    """Writes one PNG per configured output (``[[outputs]] filename``) to ``plots_dir``."""
+
     def __init__(self, analyzer, plots_dir):
         self.analyzer = analyzer
         self.plots_dir = Path(plots_dir)
 
     def plot_outputs(self, solution):
+        """Plot each metric against cycle number; returns the saved paths."""
         self.plots_dir.mkdir(parents=True, exist_ok=True)
         saved = []
         for spec in self.analyzer.output_specs:

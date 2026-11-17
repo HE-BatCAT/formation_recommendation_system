@@ -1,0 +1,52 @@
+# =============================================================================
+# Custom surrogate: PatchAttention  (surrogate/estimators/custom_estimator.py)
+# =============================================================================
+# Channel-mixed patch Transformer (PatchTST-style). Each token holds one patch
+# of BOTH voltage and current; pre-norm encoder blocks; one linear head
+# predicts all four targets at every training ageing cycle in one step.
+# Full description: Model.md.
+#
+# Train:      python -m surrogate.train_models --model custom
+# Use in MCO: set surrogate_model = "custom" in inputs/mco.toml
+#
+# Every key below is available as self.params in build_network(). Keys left
+# out fall back to CustomEstimator.DEFAULTS, then to DEFAULT_TRAINING in
+# surrogate/estimators/torch_estimator.py.
+# Changing any key here only needs retraining, never a new dataset.
+
+# ----------------------------------------------------------------- input size
+# Average-pools the 256-sample trajectory by this factor before patching.
+# Pooling by 2 is a one-level Haar approximation (detail coefficients dropped;
+# the sqrt(2) scale is absorbed by standardisation), 4 = two levels, etc.
+#   1 -> 256 steps (no reduction; currently the best setting)
+#   2 -> 128 steps   4 -> 64 steps   8 -> 32 steps
+sequence_stride = 1
+
+# Patch length in time steps; patches do not overlap and nothing is padded,
+# so (256 / sequence_stride) must be divisible by patch_len.
+#   stride 1: patch_len 8 -> 32 patches, 16 -> 16 patches
+#   stride 2: patch_len 8 -> 16 patches, 16 -> 8 patches
+patch_len = 8
+
+# -------------------------------------------------------------------- network
+d_model = 32                 # token width; each token embeds patch_len x 2 values (voltage, current)
+                             # tried: 64 gave the same test error with twice the head weights
+n_heads = 2                  # attention heads; must divide d_model (e.g. 1, 2, 4)
+ffn_size = 64                # feed-forward width inside each block (typically 2-4 x d_model)
+n_blocks = 2                 # pre-norm Transformer encoder blocks
+                             # tried: 3 blocks (with dropout 0.1) underfit and was worse on every target
+dropout = 0.05               # in embedding, attention, feed-forward and head; 0.0-0.3
+                             # tried: 0.2 underfit (train ~ test error, both high)
+
+# ------------------------------------------------------------------- training
+# Defaults for any key left out: DEFAULT_TRAINING in torch_estimator.py.
+input_noise_std = 0.0        # Gaussian noise on standardised inputs while training; 0 = off
+learning_rate = 1e-3         # AdamW
+weight_decay = 1e-4          # AdamW decoupled weight decay
+batch_size = 16              # protocols per batch (each protocol carries all its cycles)
+max_epochs = 300
+patience = 50                # stop after this many epochs without validation improvement
+min_delta = 1e-4             # minimum validation-loss drop that counts as improvement
+grad_clip_norm = 1.0         # max gradient L2 norm
+seed = 1                     # weight initialisation and batch order (folds use [split] random_state)
+device = "cpu"               # "cpu", "mps" (Apple GPU) or "cuda"; CPU is fast and deterministic here

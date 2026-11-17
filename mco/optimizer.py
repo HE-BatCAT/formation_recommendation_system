@@ -1,3 +1,12 @@
+"""Formation recommendation by multi-criteria optimisation (MCO).
+
+For every candidate in ``[grid]`` of ``mco.toml``: simulate formation with
+PyBaMM, then get ageing metrics at the first and last cycle either from a
+trained surrogate (fast) or from full PyBaMM ageing (slow). Each objective is
+min-max normalised across candidates into a 0-1 penalty; the weighted sum is
+the score, and lower is better.
+"""
+
 import csv
 import itertools
 import logging
@@ -12,20 +21,31 @@ logger = logging.getLogger(__name__)
 
 
 class CandidateGrid:
+    """Cartesian product of the ``[grid]`` lists in ``mco.toml``."""
+
     def __init__(self, grid_config):
         self.grid = grid_config
 
     def candidates(self):
+        """Yield one ``FormationCandidate`` per combination of grid values."""
         keys = list(self.grid)
         for values in itertools.product(*(self.grid[key] for key in keys)):
             yield FormationCandidate(**dict(zip(keys, values)))
 
 
 class CandidateScorer:
+    """Weighted sum of min-max normalised penalties (``[weights]`` in ``mco.toml``)."""
+
     def __init__(self, weights):
         self.weights = weights
 
     def rank(self, results):
+        """Add a ``score`` to every result and return them sorted best (lowest) first.
+
+        Normalisation is relative to the evaluated candidates, so scores are only
+        comparable within one run.
+        """
+        # Every candidate's value of each objective, for the min-max range.
         objective_values = {
             "formation_time_h": [row["formation_time_h"] for row in results],
             "final_capacity": [row["capacity_final"] for row in results],
@@ -62,19 +82,24 @@ class CandidateScorer:
         return sorted(results, key=lambda row: row["score"])
 
     def _lower(self, value, values):
+        """Penalty for lower-is-better: 0 at the minimum, 1 at the maximum."""
         minimum, maximum = min(values), max(values)
         return 0.0 if math.isclose(minimum, maximum) else (value - minimum) / (maximum - minimum)
 
     def _higher(self, value, values):
+        """Penalty for higher-is-better: 0 at the maximum, 1 at the minimum."""
         minimum, maximum = min(values), max(values)
         return 0.0 if math.isclose(minimum, maximum) else (maximum - value) / (maximum - minimum)
 
 
 class ResultRepository:
+    """Writes result rows as CSV files into ``results_dir``."""
+
     def __init__(self, results_dir):
         self.results_dir = results_dir
 
     def save(self, filename, rows):
+        """Write ``rows`` (list of dicts) to ``results_dir/filename``; nothing if empty."""
         if not rows:
             return
         self.results_dir.mkdir(parents=True, exist_ok=True)
@@ -86,6 +111,8 @@ class ResultRepository:
 
 
 class FormationOptimizer:
+    """Evaluates, scores and ranks every MCO candidate; saves the results."""
+
     def __init__(
         self,
         mco_config,
@@ -105,10 +132,16 @@ class FormationOptimizer:
         self.trajectory_featurizer = trajectory_featurizer
 
     def run(self):
+        """Evaluate all candidates and return the ``top_n`` ranked results.
+
+        A failing candidate is logged and skipped; only if all fail is an error raised.
+        """
         recommendation = self.config["recommendation"]
         candidates = list(self.grid.candidates())
         use_surrogate = self._use_surrogate(recommendation["mode"])
-        mode = "surrogate" if use_surrogate else "PyBaMM ageing"
+        mode = (
+            f"surrogate ({self.surrogate_predictor.model_name})" if use_surrogate else "PyBaMM ageing"
+        )
         logger.info(f"Evaluating {len(candidates)} candidates using {mode}")
 
         self.pipeline.pre_step()
@@ -142,14 +175,24 @@ class FormationOptimizer:
         return ranked[:top_n]
 
     def _use_surrogate(self, mode):
-        available = self.surrogate_predictor is not None and self.surrogate_predictor.available()
-        if mode == "surrogate" and not available:
-            raise FileNotFoundError("Surrogate mode requested but trained models are unavailable")
-        if mode == "pybamm":
+        """Resolve ``[recommendation] mode`` (auto / surrogate / pybamm) to a bool."""
+        if mode == "pybamm" or self.surrogate_predictor is None:
             return False
-        return available
+        if mode == "surrogate":
+            self.surrogate_predictor.require_trained()  # raises with the training command
+            return True
+        # auto: use the surrogate if trained, otherwise fall back to PyBaMM ageing
+        if self.surrogate_predictor.available():
+            return True
+        logger.warning(
+            f"Surrogate '{self.surrogate_predictor.model_name}' is not trained; "
+            f"falling back to PyBaMM ageing. Train it with: "
+            f"python -m surrogate.train_models --model {self.surrogate_predictor.model_name}"
+        )
+        return False
 
     def _evaluate(self, candidate, recommendation, use_surrogate):
+        """Formation (always PyBaMM) + ageing metrics (surrogate or PyBaMM) for one candidate."""
         formation_solution = self.pipeline.formation(candidate)
         result = asdict(candidate)
         result["formation_time_h"] = self.pipeline.formation_time_h(formation_solution)
@@ -174,6 +217,7 @@ class FormationOptimizer:
         return self._metrics_from_pairs(self.analyzer.first_and_last_metrics(solution))
 
     def _metrics_from_predictions(self, predictions):
+        """(start, final) = first and last of ``prediction_cycles``."""
         pairs = {
             key: (float(predictions[key].iloc[0]), float(predictions[key].iloc[-1]))
             for key in TARGETS
@@ -181,6 +225,7 @@ class FormationOptimizer:
         return self._metrics_from_pairs(pairs)
 
     def _metrics_from_pairs(self, pairs):
+        """``<key>_start/_final/_delta`` plus ``capacity_fade`` / ``<key>_growth`` = |final - start|."""
         result = {}
         for key in TARGETS:
             start, final = pairs[key]
@@ -191,6 +236,7 @@ class FormationOptimizer:
         return result
 
     def _print_top(self, rows):
+        """Log the top recommendations as a table (to formation_system.log)."""
         logger.info("\nRecommended formation protocols")
         logger.info(
             f"{'Rank':>4} {'Score':>8} {'Charge C':>9} {'Discharge C':>12} "

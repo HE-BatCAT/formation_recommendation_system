@@ -23,7 +23,10 @@ logger = logging.getLogger(__name__)
 
 
 class XGBoostEstimator(SurrogateEstimator):
+    """Row-wise model: each (protocol, cycle) row is one sample with 2 x 256 + 1 features."""
+
     def train(self):
+        """Protocol-level K-fold CV, then a final fit on every protocol; returns the CV summary."""
         data = self.load_dataset()
         x = data[self.feature_columns].to_numpy(dtype=float)
         y = data[list(TARGETS)].to_numpy(dtype=float)
@@ -75,6 +78,8 @@ class XGBoostEstimator(SurrogateEstimator):
             }
 
     def _fit(self, x, y):
+        """One imputer -> scaler -> XGBRegressor pipeline per target column."""
+        # Imported here so torch-only processes never load XGBoost's OpenMP runtime.
         from xgboost import XGBRegressor
 
         models = []
@@ -91,15 +96,18 @@ class XGBoostEstimator(SurrogateEstimator):
 
     @staticmethod
     def _predict(models, x):
+        """``(rows, targets)`` predictions, one column per target model."""
         return np.column_stack([model.predict(x) for model in models])
 
     def predict(self, frame):
-        x = frame[self.feature_columns].to_numpy(dtype=float)
+        """Targets for each row of ``frame`` (feature columns + ``ageing_cycle``)."""
+        x =frame[self.feature_columns].to_numpy(dtype=float)
         return pd.DataFrame(
             self._predict(self.models, x), index=frame.index, columns=list(TARGETS)
         )
 
     def _save_models(self):
+        """Write ``<target>_xgboost.joblib`` per target; returns ``{target: filename}``."""
         self.models_dir.mkdir(parents=True, exist_ok=True)
         model_files = {}
         for target, model in zip(TARGETS, self.models):
@@ -109,6 +117,7 @@ class XGBoostEstimator(SurrogateEstimator):
         return model_files
 
     def load_final_model(self):
+        """Reload the per-target pipelines listed in metadata.json."""
         with (self.models_dir / "metadata.json").open("r", encoding="utf-8") as file:
             model_files = json.load(file)["model_files"]
         self.models = [joblib.load(self.models_dir / model_files[target]) for target in TARGETS]

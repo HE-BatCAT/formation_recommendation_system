@@ -1,3 +1,13 @@
+"""Entry point: simulate one formation protocol in full detail with PyBaMM.
+
+    python run_simulation.py
+
+Runs the default protocol from [formation] in inputs/simulation.toml:
+pre-step -> formation -> C/20 check -> ageing ([run] aging_cycles) -> C/20
+check. Logs capacity/resistance check-ups and writes per-cycle plots of every
+[[outputs]] metric to [run] plots_dir. Use it to verify an MCO recommendation.
+"""
+
 import logging
 
 from inputs import ProjectConfig, setup_logging
@@ -15,10 +25,13 @@ logger = logging.getLogger(__name__)
 
 
 class IndividualSimulationRunner:
+    """Detailed simulation and diagnostics of the default formation protocol."""
+
     def __init__(self):
         self.config = ProjectConfig()
 
     def run(self):
+        """Simulate, log the check-up table and save the output plots."""
         parameter_values = ParameterLoader(self.config.parameters_path).load()
         experiments = ExperimentFactory(self.config.simulation)
         simulator = BatterySimulator(self.config.simulation, parameter_values)
@@ -58,6 +71,7 @@ class IndividualSimulationRunner:
             logger.info(path)
 
     def _print_checkup_table(self, analyzer, formation_check, aging_check):
+        """Log capacity and ECM resistance after formation, after ageing, and the change."""
         formation_capacity = analyzer.measured_capacity(formation_check)
         aging_capacity = analyzer.measured_capacity(aging_check)
         formation_resistance = analyzer.measured_resistance(formation_check)

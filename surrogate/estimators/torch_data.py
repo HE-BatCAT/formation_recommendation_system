@@ -1,4 +1,4 @@
-"""PyTorch data pipeline for the GRU and custom models.
+"""PyTorch data pipeline for the GRU and custom (PatchAttention) models.
 
 ``FormationDataset`` has one item per formation protocol, so any split by item
 index (``torch.utils.data.Subset``) is automatically a protocol-level split:
@@ -20,6 +20,9 @@ def formation_sequences(frame, featurizer, stride=1):
         axis=-1,
     )
     if stride > 1:
+        # Average pooling: mean of each block of `stride` samples; a trailing
+        # remainder shorter than `stride` is dropped. stride = 2 equals a one-level
+        # Haar approximation up to a sqrt(2) factor.
         rows, length, channels = sequence.shape
         length -= length % stride
         sequence = sequence[:, :length].reshape(rows, length // stride, stride, channels).mean(axis=2)
