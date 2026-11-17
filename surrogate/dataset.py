@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from simulations import FormationCandidate
+from surrogate.targets import TARGETS
 
 import logging
 
@@ -17,15 +18,13 @@ class SurrogateDatasetBuilder:
         self,
         surrogate_config,
         project_config,
-        experiment_factory,
-        simulator,
+        pipeline,
         analyzer,
         featurizer,
     ):
         self.config = surrogate_config.data
         self.project_config = project_config
-        self.experiments = experiment_factory
-        self.simulator = simulator
+        self.pipeline = pipeline
         self.analyzer = analyzer
         self.featurizer = featurizer
         self.dataset_path = project_config.resolve_path(self.config["paths"]["dataset"])
@@ -42,11 +41,7 @@ class SurrogateDatasetBuilder:
         if limit_candidates is not None:
             candidates = candidates[:limit_candidates]
 
-        pre_step = self.simulator.run_solver(
-            label="pre-step", 
-            experiment=self.experiments.pre_step(),
-            last_state=None
-            )
+        self.pipeline.pre_step()
         aging_cycles = self.config["data"]["aging_cycles"]
         mesh = self.config["data"]["training_ageing_mesh"]
         rows = []
@@ -56,30 +51,11 @@ class SurrogateDatasetBuilder:
             logging.info(f"Dataset candidate {index}/{len(candidates)}: {candidate}")
             started = time.perf_counter()
             try:
-                formation = self.simulator.solve(
-                    self.experiments.formation(candidate),
-                    pre_step.last_state,
-                )
-                aging = self.simulator.solve(
-                    self.experiments.aging(aging_cycles),
-                    formation.last_state,
-                )
+                formation = self.pipeline.formation(candidate)
+                aging = self.pipeline.aging(formation, aging_cycles)
                 features = self.featurizer.extract(formation)
-                series = {
-                    key: self.analyzer.metric_series(aging, key)
-                    for key in ("capacity", "plating", "sei", "resistance")
-                }
-                for cycle_number in mesh:
-                    index_in_series = cycle_number - 1
-                    if index_in_series < 0 or any(
-                        index_in_series >= len(values)
-                        for values in series.values()
-                    ):
-                        continue
-                    targets = {
-                        key: values[index_in_series]
-                        for key, values in series.items()
-                    }
+                by_cycle = self.analyzer.metrics_at_cycles(aging, TARGETS, mesh)
+                for cycle_number, targets in by_cycle.items():
                     if not all(np.isfinite(value) for value in targets.values()):
                         continue
                     rows.append(
